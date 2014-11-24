@@ -1,0 +1,27 @@
+.. _skiboot-5.9.8:
+
+=============
+skiboot-5.9.8
+=============
+
+skiboot 5.9.8 was released on Friday January 5th, 2018. It replaces
+:ref:`skiboot-5.9.7` as the current stable release in the 5.9.x series.
+
+Over :ref:`skiboot-5.9.7`, there is one important change. In lieu of setting
+fire to every computer in the world, skiboot will now pass on certain processor
+init flags from earlier firmware so the OS can make intelligent decisions on
+what mitigation techniques it also needs to employ.
+
+See:
+
+- `<https://access.redhat.com/security/vulnerabilities/speculativeexecution>`_
+- `<https://googleprojectzero.blogspot.com.au/2018/01/reading-privileged-memory-with-side.html>`_
+- `<https://meltdownattack.com/>`_
+
+The change is:
+
+- hdata: Parse IPL FW feature settings
+
+  Add parsing for the firmware feature flags in the HDAT. This
+  indicates the settings of various parameters which are set at IPL time
+  by firmware.
