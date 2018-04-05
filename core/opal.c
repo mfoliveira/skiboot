@@ -387,6 +387,120 @@ static void add_opal_firmware_node(void)
 	add_opal_firmware_exports_node(firmware);
 }
 
+static void add_opal_fw_features_node(void)
+{
+#ifdef DEBUG_OPAL_FW_FEATURES
+
+/*
+ * Defaults for the "ibm,opal/fw-features/<macro>/<enabled|disabled>" properties.
+ * Override: DEBUG_OPAL_FW_FEATURES_FLAGS="-D<macro>=<true|false>[,...]"
+ */
+
+#ifndef FW_BCCTRL_SERIALIZED
+#define FW_BCCTRL_SERIALIZED false
+#endif
+
+#ifndef FW_COUNT_CACHE_DISABLED
+#define FW_COUNT_CACHE_DISABLED false
+#endif
+
+#ifndef FW_L1D_THREAD_SPLIT
+#define FW_L1D_THREAD_SPLIT false
+#endif
+
+#ifndef INST_L1D_FLUSH_ORI30_30_0
+#define INST_L1D_FLUSH_ORI30_30_0 false
+#endif
+
+#ifndef INST_L1D_FLUSH_TRIG2
+#define INST_L1D_FLUSH_TRIG2 false
+#endif
+
+#ifndef INST_SPEC_BARRIER_ORI31_31_0
+#define INST_SPEC_BARRIER_ORI31_31_0 false
+#endif
+
+#ifndef NEEDS_L1D_FLUSH_MSR_HV_1_TO_0
+#define NEEDS_L1D_FLUSH_MSR_HV_1_TO_0 true
+#endif
+
+#ifndef NEEDS_L1D_FLUSH_MSR_PR_0_TO_1
+#define NEEDS_L1D_FLUSH_MSR_PR_0_TO_1 true
+#endif
+
+#ifndef NEEDS_SPEC_BARRIER_FOR_BOUND_CHECKS
+#define NEEDS_SPEC_BARRIER_FOR_BOUND_CHECKS true
+#endif
+
+#ifndef SPECULATION_POLICY_FAVOR_SECURITY
+#define SPECULATION_POLICY_FAVOR_SECURITY true
+#endif
+
+	struct opal_fw_feature {
+		const char *name;
+		bool enabled;
+	} fw_features[] = {
+		{ "fw-bcctrl-serialized",
+		   FW_BCCTRL_SERIALIZED },
+		{ "fw-count-cache-disabled",
+		   FW_COUNT_CACHE_DISABLED },
+		{ "fw-l1d-thread-split",
+		   FW_L1D_THREAD_SPLIT },
+		{ "inst-l1d-flush-ori30,30,0",
+		   INST_L1D_FLUSH_ORI30_30_0 },
+		{ "inst-l1d-flush-trig2",
+		   INST_L1D_FLUSH_TRIG2 },
+		{ "inst-spec-barrier-ori31,31,0",
+		   INST_SPEC_BARRIER_ORI31_31_0 },
+		{ "needs-l1d-flush-msr-hv-1-to-0",
+		   NEEDS_L1D_FLUSH_MSR_HV_1_TO_0 },
+		{ "needs-l1d-flush-msr-pr-0-to-1",
+		   NEEDS_L1D_FLUSH_MSR_PR_0_TO_1 },
+		{ "needs-spec-barrier-for-bound-checks",
+		   NEEDS_SPEC_BARRIER_FOR_BOUND_CHECKS },
+		{ "speculation-policy-favor-security",
+		   SPECULATION_POLICY_FAVOR_SECURITY },
+		{ NULL, false } /* last element */ };
+
+	/* const char * macros for the requested and the alternate properties */
+#define prop_requested(i) (fw_features[i].enabled ? "enabled" : "disabled")
+#define prop_alternate(i) (fw_features[i].enabled ? "disabled" : "enabled")
+
+	struct dt_node *fw_features_node = dt_new_check(opal_node, "fw-features");
+	const char *action = NULL;
+	int i;
+
+	for (i = 0; fw_features[i].name; i++) {
+		struct dt_property *prop;
+		struct dt_node *node = dt_new_check(fw_features_node,
+						    fw_features[i].name);
+
+		/* Check for alternate existing property and remove it */
+		if ((prop = __dt_find_property(node, prop_alternate(i)))) {
+			dt_del_property(node, prop);
+			action = "modified";
+		}
+
+		/* Check for requested existing property and keep it ... */
+		if ((prop = __dt_find_property(node, prop_requested(i)))) {
+			action = "existing";
+		/* ... or create it */
+		} else {
+			dt_add_property(node, prop_requested(i), NULL, 0);
+			prop = __dt_find_property(node, prop_requested(i));
+
+			/* possibly set earlier */
+			if (!action)
+				action = "new";
+		}
+
+		prlog(PR_ALERT, "DEBUG_OPAL_FW_FEATURES: %s/%s (%s)\n",
+				node->name, prop->name,
+				(action ? action : "surprise"));
+	}
+#endif
+}
+
 void add_opal_node(void)
 {
 	uint64_t base, entry, size;
@@ -431,6 +545,7 @@ void add_opal_node(void)
 	add_opal_firmware_node();
 	add_associativity_ref_point();
 	memcons_add_properties();
+	add_opal_fw_features_node();
 }
 
 static struct lock evt_lock = LOCK_UNLOCKED;
